@@ -20,26 +20,45 @@ public class CommandHandler
 
         if (_taskService.IsInitialized(currentDir))
         {
-            Console.WriteLine("Пространство уже инициализировано.");
+            var existingWorkspace = _workspaceService.FindWorkspaceByPath(currentDir);
+            if (existingWorkspace != null)
+            {
+                Console.WriteLine("Пространство уже инициализировано.");
+                return;
+            }
+
+            var workspaces = _workspaceService.LoadWorkspaces();
+            var maxId = workspaces.Any() ? workspaces.Max(w => w.id) : 0;
+            var newId = maxId + 1;
+
+            var workspace = new Workspace
+            {
+                id = newId,
+                name = Path.GetFileName(currentDir),
+                path = currentDir
+            };
+
+            _workspaceService.AddWorkspace(workspace);
+            Console.WriteLine($"Рабочее пространство добавлено в список с ID {newId}.");
             return;
         }
 
         _taskService.InitializeWorkspace(currentDir);
 
-        var workspaces = _workspaceService.LoadWorkspaces();
-        var maxId = workspaces.Any() ? workspaces.Max(w => w.id) : 0;
-        var newId = maxId + 1;
+        var allWorkspaces = _workspaceService.LoadWorkspaces();
+        var newMaxId = allWorkspaces.Any() ? allWorkspaces.Max(w => w.id) : 0;
+        var newWorkspaceId = newMaxId + 1;
 
-        var workspace = new Workspace
+        var newWorkspace = new Workspace
         {
-            id = newId,
+            id = newWorkspaceId,
             name = Path.GetFileName(currentDir),
             path = currentDir
         };
 
-        _workspaceService.AddWorkspace(workspace);
+        _workspaceService.AddWorkspace(newWorkspace);
 
-        Console.WriteLine($"Рабочее пространство инициализировано с ID {newId}.");
+        Console.WriteLine($"Рабочее пространство инициализировано с ID {newWorkspaceId}.");
     }
 
     public void HandleAdd(string text, int? workspaceId)
@@ -52,45 +71,33 @@ public class CommandHandler
 
         var workspacePath = GetWorkspacePath(workspaceId);
         if (workspacePath == null) return;
+        Workspace? workspace;
 
-        // Check if workspace is archived and reactivate it
         if (workspaceId.HasValue)
         {
-            var workspace = _workspaceService.FindWorkspace(workspaceId.Value);
-            if (workspace != null && workspace.status == "archived")
-            {
-                workspace.status = "active";
-                _workspaceService.UpdateWorkspace(workspace);
-                
-                // Reactivate all hidden tasks
-                var tasks = _taskService.LoadTasks(workspacePath);
-                foreach (var task in tasks.Where(t => t.status == "hidden"))
-                {
-                    task.status = "active";
-                }
-                _taskService.SaveTasks(workspacePath, tasks);
-            }
+            workspace = _workspaceService.FindWorkspace(workspaceId.Value);
         }
         else
         {
-            var workspace = _workspaceService.FindWorkspaceByPath(workspacePath);
-            if (workspace != null && workspace.status == "archived")
+            workspace = _workspaceService.FindWorkspaceByPath(workspacePath);
+        }
+
+        if (workspace != null && workspace.status == "archived")
+        {
+            workspace.status = "active";
+            _workspaceService.UpdateWorkspace(workspace);
+            
+            var tasks = _taskService.LoadTasks(workspacePath);
+            foreach (var task in tasks.Where(t => t.status == "hidden"))
             {
-                workspace.status = "active";
-                _workspaceService.UpdateWorkspace(workspace);
-                
-                // Reactivate all hidden tasks
-                var tasks = _taskService.LoadTasks(workspacePath);
-                foreach (var task in tasks.Where(t => t.status == "hidden"))
-                {
-                    task.status = "active";
-                }
-                _taskService.SaveTasks(workspacePath, tasks);
+                task.status = "active";
             }
+            _taskService.SaveTasks(workspacePath, tasks);
         }
 
         var loadedTasks = _taskService.LoadTasks(workspacePath);
-        var maxId = loadedTasks.Any() ? loadedTasks.Max(t => t.id) : 0;
+        var notArchivedTasks = loadedTasks.Where(x => x.status != "archived").ToList();
+        var maxId = notArchivedTasks.Count != 0 ? notArchivedTasks.Max(t => t.id) : 0;
         var newId = maxId + 1;
 
         var newTask = new Models.Task
@@ -270,12 +277,29 @@ public class CommandHandler
     {
         try
         {
+            var workspace = _workspaceService.FindWorkspace(workspaceId);
+            if (workspace == null)
+            {
+                Console.WriteLine("Рабочее пространство не найдено.");
+                return;
+            }
+
+            var tmDir = Path.Combine(workspace.path, ".tm");
+            if (Directory.Exists(tmDir))
+            {
+                Directory.Delete(tmDir, true);
+            }
+
             _workspaceService.RemoveWorkspace(workspaceId);
             Console.WriteLine($"Рабочее пространство {workspaceId} удалено. ID переприсвоены.");
         }
         catch (InvalidOperationException ex)
         {
             Console.WriteLine(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при удалении: {ex.Message}");
         }
     }
 
