@@ -5,7 +5,7 @@ var handler = new CommandHandler();
 if (args.Length == 0)
 {
     Console.WriteLine("Использование: tm <команда> [аргументы]");
-    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, premove, parchive, find");
+    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, premove, parchive, hide, find");
     return;
 }
 
@@ -69,6 +69,25 @@ try
                 }
 
                 handler.HandleArchive(taskId, workspaceId);
+            }
+            break;
+
+        case "hide":
+            {
+                if (remainingArgs.Length == 0)
+                {
+                    Console.WriteLine("Укажите ID заметки для скрытия.");
+                    return;
+                }
+
+                var (taskIdStr, workspaceId) = ParseIdAndWorkspace(remainingArgs);
+                if (!int.TryParse(taskIdStr, out var taskId))
+                {
+                    Console.WriteLine("ID заметки должен быть числом.");
+                    return;
+                }
+
+                handler.HandleHide(taskId, workspaceId);
             }
             break;
 

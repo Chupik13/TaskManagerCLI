@@ -61,6 +61,14 @@ public class CommandHandler
             {
                 workspace.status = "active";
                 _workspaceService.UpdateWorkspace(workspace);
+                
+                // Reactivate all hidden tasks
+                var tasks = _taskService.LoadTasks(workspacePath);
+                foreach (var task in tasks.Where(t => t.status == "hidden"))
+                {
+                    task.status = "active";
+                }
+                _taskService.SaveTasks(workspacePath, tasks);
             }
         }
         else
@@ -70,22 +78,30 @@ public class CommandHandler
             {
                 workspace.status = "active";
                 _workspaceService.UpdateWorkspace(workspace);
+                
+                // Reactivate all hidden tasks
+                var tasks = _taskService.LoadTasks(workspacePath);
+                foreach (var task in tasks.Where(t => t.status == "hidden"))
+                {
+                    task.status = "active";
+                }
+                _taskService.SaveTasks(workspacePath, tasks);
             }
         }
 
-        var tasks = _taskService.LoadTasks(workspacePath);
-        var maxId = tasks.Any() ? tasks.Max(t => t.id) : 0;
+        var loadedTasks = _taskService.LoadTasks(workspacePath);
+        var maxId = loadedTasks.Any() ? loadedTasks.Max(t => t.id) : 0;
         var newId = maxId + 1;
 
-        var task = new Models.Task
+        var newTask = new Models.Task
         {
             id = newId,
             text = text,
             status = "active"
         };
 
-        tasks.Add(task);
-        _taskService.SaveTasks(workspacePath, tasks);
+        loadedTasks.Add(newTask);
+        _taskService.SaveTasks(workspacePath, loadedTasks);
 
         Console.WriteLine($"Заметка добавлена с ID {newId}.");
     }
@@ -186,6 +202,26 @@ public class CommandHandler
         Console.WriteLine($"Заметка {taskId} архивирована.");
     }
 
+    public void HandleHide(int taskId, int? workspaceId)
+    {
+        var workspacePath = GetWorkspacePath(workspaceId);
+        if (workspacePath == null) return;
+
+        var tasks = _taskService.LoadTasks(workspacePath);
+        var task = tasks.FirstOrDefault(t => t.id == taskId);
+
+        if (task == null)
+        {
+            Console.WriteLine("Заметка не найдена.");
+            return;
+        }
+
+        task.status = "hidden";
+        _taskService.SaveTasks(workspacePath, tasks);
+
+        Console.WriteLine($"Заметка {taskId} скрыта.");
+    }
+
     public void HandleCompact(int? workspaceId)
     {
         var workspacePath = GetWorkspacePath(workspaceId);
@@ -262,7 +298,7 @@ public class CommandHandler
                 var tasks = _taskService.LoadTasks(workspace.path);
                 foreach (var task in tasks)
                 {
-                    task.status = "archived";
+                    task.status = "hidden";
                 }
                 _taskService.SaveTasks(workspace.path, tasks);
             }

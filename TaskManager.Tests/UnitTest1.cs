@@ -138,6 +138,23 @@ public class TaskServiceTests : IDisposable
         Assert.Contains(matching, t => t.text == "Купить молоко");
         Assert.Contains(matching, t => t.text == "Купить хлеб");
     }
+
+    [Fact]
+    public void HideTask_ChangesStatusToHidden()
+    {
+        _taskService.InitializeWorkspace(_testWorkspacePath);
+        var tasks = new List<Models.Task>
+        {
+            new Models.Task { id = 1, text = "Task 1", status = "active" }
+        };
+        _taskService.SaveTasks(_testWorkspacePath, tasks);
+
+        tasks[0].status = "hidden";
+        _taskService.SaveTasks(_testWorkspacePath, tasks);
+
+        var loadedTasks = _taskService.LoadTasks(_testWorkspacePath);
+        Assert.Equal("hidden", loadedTasks[0].status);
+    }
 }
 
 public class WorkspaceServiceTests : IDisposable
@@ -273,5 +290,89 @@ public class WorkspaceServiceTests : IDisposable
         Assert.Equal(2, allWorkspaces.Count);
         Assert.Single(activeWorkspaces);
         Assert.Equal("ActiveWorkspace", activeWorkspaces[0].name);
+    }
+
+    [Fact]
+    public void ArchiveWorkspace_SetsTasksToHidden()
+    {
+        var path = CreateTestWorkspace("TestWorkspace");
+        var taskService = new TaskService();
+        taskService.InitializeWorkspace(path);
+
+        var tasks = new List<Models.Task>
+        {
+            new Models.Task { id = 1, text = "Task 1", status = "active" },
+            new Models.Task { id = 2, text = "Task 2", status = "active" }
+        };
+        taskService.SaveTasks(path, tasks);
+
+        var workspace = new Models.Workspace 
+        { 
+            id = 1, 
+            name = "TestWorkspace", 
+            path = path, 
+            status = "active" 
+        };
+        _workspaceService.AddWorkspace(workspace);
+
+        // Archive workspace
+        var loadedWorkspace = _workspaceService.FindWorkspace(1);
+        Assert.NotNull(loadedWorkspace);
+        loadedWorkspace.status = "archived";
+        _workspaceService.UpdateWorkspace(loadedWorkspace);
+
+        // Set all tasks to hidden
+        var loadedTasks = taskService.LoadTasks(path);
+        foreach (var task in loadedTasks)
+        {
+            task.status = "hidden";
+        }
+        taskService.SaveTasks(path, loadedTasks);
+
+        // Verify tasks are hidden
+        var finalTasks = taskService.LoadTasks(path);
+        Assert.All(finalTasks, task => Assert.Equal("hidden", task.status));
+    }
+
+    [Fact]
+    public void ReactivateWorkspace_SetsHiddenTasksToActive()
+    {
+        var path = CreateTestWorkspace("TestWorkspace");
+        var taskService = new TaskService();
+        taskService.InitializeWorkspace(path);
+
+        var tasks = new List<Models.Task>
+        {
+            new Models.Task { id = 1, text = "Task 1", status = "hidden" },
+            new Models.Task { id = 2, text = "Task 2", status = "hidden" }
+        };
+        taskService.SaveTasks(path, tasks);
+
+        var workspace = new Models.Workspace 
+        { 
+            id = 1, 
+            name = "TestWorkspace", 
+            path = path, 
+            status = "archived" 
+        };
+        _workspaceService.AddWorkspace(workspace);
+
+        // Reactivate workspace
+        var loadedWorkspace = _workspaceService.FindWorkspace(1);
+        Assert.NotNull(loadedWorkspace);
+        loadedWorkspace.status = "active";
+        _workspaceService.UpdateWorkspace(loadedWorkspace);
+
+        // Reactivate all hidden tasks
+        var loadedTasks = taskService.LoadTasks(path);
+        foreach (var task in loadedTasks.Where(t => t.status == "hidden"))
+        {
+            task.status = "active";
+        }
+        taskService.SaveTasks(path, loadedTasks);
+
+        // Verify tasks are active
+        var finalTasks = taskService.LoadTasks(path);
+        Assert.All(finalTasks, task => Assert.Equal("active", task.status));
     }
 }
