@@ -144,30 +144,61 @@ public class WorkspaceServiceTests : IDisposable
 {
     private readonly string _testDir;
     private readonly WorkspaceService _workspaceService;
+    private readonly List<string> _testWorkspacePaths;
 
     public WorkspaceServiceTests()
     {
         _testDir = Path.Combine(Path.GetTempPath(), "tm_test_global_" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDir);
         _workspaceService = new WorkspaceService(_testDir);
+        _testWorkspacePaths = new List<string>();
     }
 
     public void Dispose()
     {
+        // Clean up test workspace directories
+        foreach (var path in _testWorkspacePaths)
+        {
+            if (Directory.Exists(path))
+            {
+                try
+                {
+                    Directory.Delete(path, true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+
+        // Clean up test config directory
         if (Directory.Exists(_testDir))
         {
             Directory.Delete(_testDir, true);
         }
     }
 
+    private string CreateTestWorkspace(string name)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"tm_test_workspace_{name}_{Guid.NewGuid()}");
+        Directory.CreateDirectory(path);
+        _testWorkspacePaths.Add(path);
+        return path;
+    }
+
     [Fact]
     public void RemoveWorkspace_ReassignsIds()
     {
+        var path1 = CreateTestWorkspace("Workspace1");
+        var path2 = CreateTestWorkspace("Workspace2");
+        var path3 = CreateTestWorkspace("Workspace3");
+
         var workspaces = new List<Models.Workspace>
         {
-            new Models.Workspace { id = 1, name = "Workspace1", path = "/path1", status = "active" },
-            new Models.Workspace { id = 2, name = "Workspace2", path = "/path2", status = "active" },
-            new Models.Workspace { id = 3, name = "Workspace3", path = "/path3", status = "active" }
+            new Models.Workspace { id = 1, name = "Workspace1", path = path1, status = "active" },
+            new Models.Workspace { id = 2, name = "Workspace2", path = path2, status = "active" },
+            new Models.Workspace { id = 3, name = "Workspace3", path = path3, status = "active" }
         };
 
         foreach (var ws in workspaces)
@@ -188,11 +219,13 @@ public class WorkspaceServiceTests : IDisposable
     [Fact]
     public void ArchiveWorkspace_ChangesStatus()
     {
+        var path = CreateTestWorkspace("TestWorkspace");
+
         var workspace = new Models.Workspace 
         { 
             id = 1, 
             name = "TestWorkspace", 
-            path = "/test/path", 
+            path = path, 
             status = "active" 
         };
 
@@ -208,5 +241,37 @@ public class WorkspaceServiceTests : IDisposable
         var updated = _workspaceService.FindWorkspace(1);
         Assert.NotNull(updated);
         Assert.Equal("archived", updated.status);
+    }
+
+    [Fact]
+    public void ArchiveWorkspace_HidesFromActiveList()
+    {
+        var path1 = CreateTestWorkspace("ActiveWorkspace");
+        var path2 = CreateTestWorkspace("ArchivedWorkspace");
+
+        var workspaces = new List<Models.Workspace>
+        {
+            new Models.Workspace { id = 1, name = "ActiveWorkspace", path = path1, status = "active" },
+            new Models.Workspace { id = 2, name = "ArchivedWorkspace", path = path2, status = "active" }
+        };
+
+        foreach (var ws in workspaces)
+        {
+            _workspaceService.AddWorkspace(ws);
+        }
+
+        // Archive workspace 2
+        var workspace2 = _workspaceService.FindWorkspace(2);
+        Assert.NotNull(workspace2);
+        workspace2.status = "archived";
+        _workspaceService.UpdateWorkspace(workspace2);
+
+        // Check that only active workspaces are returned
+        var allWorkspaces = _workspaceService.LoadWorkspaces();
+        var activeWorkspaces = allWorkspaces.Where(w => w.status == "active").ToList();
+
+        Assert.Equal(2, allWorkspaces.Count);
+        Assert.Single(activeWorkspaces);
+        Assert.Equal("ActiveWorkspace", activeWorkspaces[0].name);
     }
 }
