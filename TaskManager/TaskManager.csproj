@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>tm</ToolCommandName>
+    <PackageId>TaskManager</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>TaskManager</Authors>
+    <Description>Console Task Manager</Description>
+  </PropertyGroup>
+
+</Project>
