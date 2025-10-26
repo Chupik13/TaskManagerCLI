@@ -5,7 +5,7 @@ var handler = new CommandHandler();
 if (args.Length == 0)
 {
     Console.WriteLine("Использование: tm <команда> [аргументы]");
-    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, premove, parchive, hide, find");
+    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, premove, parchive, pcompact, hide, find");
     return;
 }
 
@@ -136,6 +136,10 @@ try
 
                 handler.HandleParchive(workspaceId);
             }
+            break;
+
+        case "pcompact":
+            handler.HandlePcompact();
             break;
 
         case "find":

@@ -8,7 +8,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>tm</ToolCommandName>
     <PackageId>TaskManager</PackageId>
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <Authors>TaskManager</Authors>
     <Description>Console Task Manager</Description>
   </PropertyGroup>

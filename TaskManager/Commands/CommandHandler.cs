@@ -84,8 +84,17 @@ public class CommandHandler
 
         if (workspace != null && workspace.status == "archived")
         {
+            var oldId = workspace.id;
+            
+            // First, just change status to active
             workspace.status = "active";
             _workspaceService.UpdateWorkspace(workspace);
+            
+            // Compact workspace list to maintain sequential IDs
+            CompactWorkspaceIds();
+            
+            // Reload workspace to get new ID
+            workspace = _workspaceService.FindWorkspaceByPath(workspacePath);
             
             var tasks = _taskService.LoadTasks(workspacePath);
             foreach (var task in tasks.Where(t => t.status == "hidden"))
@@ -93,6 +102,8 @@ public class CommandHandler
                 task.status = "active";
             }
             _taskService.SaveTasks(workspacePath, tasks);
+            
+            Console.WriteLine($"Рабочее пространство реактивировано (ID изменён: {oldId} → {workspace?.id}).");
         }
 
         var loadedTasks = _taskService.LoadTasks(workspacePath);
@@ -401,6 +412,34 @@ public class CommandHandler
         var rightSuffix = rightEnd < text.Length ? "..." : "";
 
         return $"{leftPrefix}{leftPart}{match}{rightPart}{rightSuffix}";
+    }
+
+    public void HandlePcompact()
+    {
+        CompactWorkspaceIds();
+        Console.WriteLine("Компактизация рабочих пространств завершена. ID переприсвоены последовательно.");
+    }
+
+    private void CompactWorkspaceIds()
+    {
+        var workspaces = _workspaceService.LoadWorkspaces();
+        var activeWorkspaces = workspaces.Where(w => w.status == "active").OrderBy(w => w.id).ToList();
+        var archivedWorkspaces = workspaces.Where(w => w.status == "archived").OrderBy(w => w.id).ToList();
+
+        // Reassign IDs starting from 1 for active workspaces
+        for (int i = 0; i < activeWorkspaces.Count; i++)
+        {
+            activeWorkspaces[i].id = i + 1;
+        }
+
+        // Reassign IDs starting from 1000 for archived workspaces
+        for (int i = 0; i < archivedWorkspaces.Count; i++)
+        {
+            archivedWorkspaces[i].id = 1000 + i;
+        }
+
+        var compactedWorkspaces = activeWorkspaces.Concat(archivedWorkspaces).ToList();
+        _workspaceService.SaveWorkspaces(compactedWorkspaces);
     }
 
     private string? GetWorkspacePath(int? workspaceId)

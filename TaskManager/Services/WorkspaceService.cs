@@ -96,6 +96,8 @@ public class WorkspaceService
         if (existing != null)
         {
             existing.status = workspace.status;
+            existing.name = workspace.name;
+            existing.path = workspace.path;
             SaveWorkspaces(workspaces);
         }
     }
