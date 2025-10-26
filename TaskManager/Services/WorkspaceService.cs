@@ -7,15 +7,26 @@ public class WorkspaceService
 {
     private readonly string _globalConfigPath;
 
-    public WorkspaceService()
+    public WorkspaceService(string? testConfigPath = null)
     {
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var globalDir = Path.Combine(userProfile, ".tm");
-        _globalConfigPath = Path.Combine(globalDir, "workspaces.json");
-
-        if (!Directory.Exists(globalDir))
+        if (!string.IsNullOrEmpty(testConfigPath))
         {
-            Directory.CreateDirectory(globalDir);
+            _globalConfigPath = Path.Combine(testConfigPath, "workspaces.json");
+            if (!Directory.Exists(testConfigPath))
+            {
+                Directory.CreateDirectory(testConfigPath);
+            }
+        }
+        else
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var globalDir = Path.Combine(userProfile, ".tm");
+            _globalConfigPath = Path.Combine(globalDir, "workspaces.json");
+
+            if (!Directory.Exists(globalDir))
+            {
+                Directory.CreateDirectory(globalDir);
+            }
         }
     }
 

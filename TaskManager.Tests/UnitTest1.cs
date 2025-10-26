@@ -140,3 +140,48 @@ public class TaskServiceTests : IDisposable
     }
 }
 
+public class WorkspaceServiceTests : IDisposable
+{
+    private readonly string _testDir;
+    private readonly WorkspaceService _workspaceService;
+
+    public WorkspaceServiceTests()
+    {
+        _testDir = Path.Combine(Path.GetTempPath(), "tm_test_global_" + Guid.NewGuid().ToString());
+        Directory.CreateDirectory(_testDir);
+        _workspaceService = new WorkspaceService(_testDir);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testDir))
+        {
+            Directory.Delete(_testDir, true);
+        }
+    }
+
+    [Fact]
+    public void RemoveWorkspace_ReassignsIds()
+    {
+        var workspaces = new List<Models.Workspace>
+        {
+            new Models.Workspace { id = 1, name = "Workspace1", path = "/path1" },
+            new Models.Workspace { id = 2, name = "Workspace2", path = "/path2" },
+            new Models.Workspace { id = 3, name = "Workspace3", path = "/path3" }
+        };
+
+        foreach (var ws in workspaces)
+        {
+            _workspaceService.AddWorkspace(ws);
+        }
+
+        _workspaceService.RemoveWorkspace(2);
+
+        var loadedWorkspaces = _workspaceService.LoadWorkspaces();
+        Assert.Equal(2, loadedWorkspaces.Count);
+        Assert.Equal(1, loadedWorkspaces[0].id);
+        Assert.Equal("Workspace1", loadedWorkspaces[0].name);
+        Assert.Equal(2, loadedWorkspaces[1].id);
+        Assert.Equal("Workspace3", loadedWorkspaces[1].name);
+    }
+}

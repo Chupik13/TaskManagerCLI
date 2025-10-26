@@ -70,23 +70,57 @@ public class CommandHandler
         Console.WriteLine($"Заметка добавлена с ID {newId}.");
     }
 
-    public void HandleList(int? workspaceId)
+    public void HandleList(int? workspaceId, bool isGlobal)
     {
-        var workspacePath = GetWorkspacePath(workspaceId);
-        if (workspacePath == null) return;
-
-        var tasks = _taskService.LoadTasks(workspacePath);
-        var activeTasks = tasks.Where(t => t.status == "active").ToList();
-
-        if (!activeTasks.Any())
+        if (isGlobal)
         {
-            Console.WriteLine("Нет активных заметок.");
-            return;
+            var workspaces = _workspaceService.LoadWorkspaces();
+            if (!workspaces.Any())
+            {
+                Console.WriteLine("Нет рабочих пространств.");
+                return;
+            }
+
+            bool foundAny = false;
+            foreach (var workspace in workspaces)
+            {
+                var tasks = _taskService.LoadTasks(workspace.path);
+                var activeTasks = tasks.Where(t => t.status == "active").ToList();
+
+                if (activeTasks.Any())
+                {
+                    Console.WriteLine($"\n{workspace.name} (ID: {workspace.id}):");
+                    foreach (var task in activeTasks)
+                    {
+                        Console.WriteLine($"  {task.id}: {task.text}");
+                    }
+                    foundAny = true;
+                }
+            }
+
+            if (!foundAny)
+            {
+                Console.WriteLine("Нет активных заметок.");
+            }
         }
-
-        foreach (var task in activeTasks)
+        else
         {
-            Console.WriteLine($"{task.id}: {task.text}");
+            var workspacePath = GetWorkspacePath(workspaceId);
+            if (workspacePath == null) return;
+
+            var tasks = _taskService.LoadTasks(workspacePath);
+            var activeTasks = tasks.Where(t => t.status == "active").ToList();
+
+            if (!activeTasks.Any())
+            {
+                Console.WriteLine("Нет активных заметок.");
+                return;
+            }
+
+            foreach (var task in activeTasks)
+            {
+                Console.WriteLine($"{task.id}: {task.text}");
+            }
         }
     }
 

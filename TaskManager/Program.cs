@@ -29,8 +29,8 @@ try
 
         case "list":
             {
-                var workspaceId = ParseWorkspaceId(remainingArgs);
-                handler.HandleList(workspaceId);
+                var (workspaceId, isGlobal) = ParseWorkspaceIdAndGlobal(remainingArgs);
+                handler.HandleList(workspaceId, isGlobal);
             }
             break;
 
@@ -152,6 +152,26 @@ static int? ParseWorkspaceId(string[] args)
         }
     }
     return null;
+}
+
+static (int? workspaceId, bool isGlobal) ParseWorkspaceIdAndGlobal(string[] args)
+{
+    int? workspaceId = null;
+    bool isGlobal = false;
+
+    for (int i = 0; i < args.Length; i++)
+    {
+        if (args[i] == "-p" && i + 1 < args.Length && int.TryParse(args[i + 1], out var id))
+        {
+            workspaceId = id;
+        }
+        else if (args[i] == "-g")
+        {
+            isGlobal = true;
+        }
+    }
+
+    return (workspaceId, isGlobal);
 }
 
 static (string idStr, int? workspaceId) ParseIdAndWorkspace(string[] args)
