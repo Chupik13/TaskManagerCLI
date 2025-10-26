@@ -87,4 +87,16 @@ public class WorkspaceService
         
         SaveWorkspaces(workspaces);
     }
+
+    public void UpdateWorkspace(Workspace workspace)
+    {
+        var workspaces = LoadWorkspaces();
+        var existing = workspaces.FirstOrDefault(w => w.id == workspace.id);
+        
+        if (existing != null)
+        {
+            existing.status = workspace.status;
+            SaveWorkspaces(workspaces);
+        }
+    }
 }

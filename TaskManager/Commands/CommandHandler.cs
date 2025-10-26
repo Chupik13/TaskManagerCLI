@@ -53,6 +53,26 @@ public class CommandHandler
         var workspacePath = GetWorkspacePath(workspaceId);
         if (workspacePath == null) return;
 
+        // Check if workspace is archived and reactivate it
+        if (workspaceId.HasValue)
+        {
+            var workspace = _workspaceService.FindWorkspace(workspaceId.Value);
+            if (workspace != null && workspace.status == "archived")
+            {
+                workspace.status = "active";
+                _workspaceService.UpdateWorkspace(workspace);
+            }
+        }
+        else
+        {
+            var workspace = _workspaceService.FindWorkspaceByPath(workspacePath);
+            if (workspace != null && workspace.status == "archived")
+            {
+                workspace.status = "active";
+                _workspaceService.UpdateWorkspace(workspace);
+            }
+        }
+
         var tasks = _taskService.LoadTasks(workspacePath);
         var maxId = tasks.Any() ? tasks.Max(t => t.id) : 0;
         var newId = maxId + 1;
@@ -75,14 +95,16 @@ public class CommandHandler
         if (isGlobal)
         {
             var workspaces = _workspaceService.LoadWorkspaces();
-            if (!workspaces.Any())
+            var activeWorkspaces = workspaces.Where(w => w.status == "active").ToList();
+            
+            if (!activeWorkspaces.Any())
             {
                 Console.WriteLine("Нет рабочих пространств.");
                 return;
             }
 
             bool foundAny = false;
-            foreach (var workspace in workspaces)
+            foreach (var workspace in activeWorkspaces)
             {
                 var tasks = _taskService.LoadTasks(workspace.path);
                 var activeTasks = tasks.Where(t => t.status == "active").ToList();
@@ -194,14 +216,15 @@ public class CommandHandler
     public void HandlePlist()
     {
         var workspaces = _workspaceService.LoadWorkspaces();
+        var activeWorkspaces = workspaces.Where(w => w.status == "active").ToList();
 
-        if (!workspaces.Any())
+        if (!activeWorkspaces.Any())
         {
             Console.WriteLine("Нет рабочих пространств.");
             return;
         }
 
-        foreach (var workspace in workspaces)
+        foreach (var workspace in activeWorkspaces)
         {
             Console.WriteLine($"{workspace.id}: {workspace.name} ({workspace.path})");
         }
@@ -220,6 +243,38 @@ public class CommandHandler
         }
     }
 
+    public void HandleParchive(int workspaceId)
+    {
+        try
+        {
+            var workspace = _workspaceService.FindWorkspace(workspaceId);
+            if (workspace == null)
+            {
+                Console.WriteLine("Рабочее пространство не найдено.");
+                return;
+            }
+
+            workspace.status = "archived";
+            _workspaceService.UpdateWorkspace(workspace);
+
+            if (_taskService.IsInitialized(workspace.path))
+            {
+                var tasks = _taskService.LoadTasks(workspace.path);
+                foreach (var task in tasks)
+                {
+                    task.status = "archived";
+                }
+                _taskService.SaveTasks(workspace.path, tasks);
+            }
+
+            Console.WriteLine($"Рабочее пространство {workspaceId} архивировано.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка: {ex.Message}");
+        }
+    }
+
     public void HandleFind(string searchText, int? workspaceId, bool isGlobal)
     {
         if (string.IsNullOrWhiteSpace(searchText))
@@ -232,7 +287,7 @@ public class CommandHandler
 
         if (isGlobal)
         {
-            workspaces = _workspaceService.LoadWorkspaces();
+            workspaces = _workspaceService.LoadWorkspaces().Where(w => w.status == "active").ToList();
             if (!workspaces.Any())
             {
                 Console.WriteLine("Нет рабочих пространств.");

@@ -165,9 +165,9 @@ public class WorkspaceServiceTests : IDisposable
     {
         var workspaces = new List<Models.Workspace>
         {
-            new Models.Workspace { id = 1, name = "Workspace1", path = "/path1" },
-            new Models.Workspace { id = 2, name = "Workspace2", path = "/path2" },
-            new Models.Workspace { id = 3, name = "Workspace3", path = "/path3" }
+            new Models.Workspace { id = 1, name = "Workspace1", path = "/path1", status = "active" },
+            new Models.Workspace { id = 2, name = "Workspace2", path = "/path2", status = "active" },
+            new Models.Workspace { id = 3, name = "Workspace3", path = "/path3", status = "active" }
         };
 
         foreach (var ws in workspaces)
@@ -183,5 +183,30 @@ public class WorkspaceServiceTests : IDisposable
         Assert.Equal("Workspace1", loadedWorkspaces[0].name);
         Assert.Equal(2, loadedWorkspaces[1].id);
         Assert.Equal("Workspace3", loadedWorkspaces[1].name);
+    }
+
+    [Fact]
+    public void ArchiveWorkspace_ChangesStatus()
+    {
+        var workspace = new Models.Workspace 
+        { 
+            id = 1, 
+            name = "TestWorkspace", 
+            path = "/test/path", 
+            status = "active" 
+        };
+
+        _workspaceService.AddWorkspace(workspace);
+        
+        var loaded = _workspaceService.FindWorkspace(1);
+        Assert.NotNull(loaded);
+        Assert.Equal("active", loaded.status);
+
+        loaded.status = "archived";
+        _workspaceService.UpdateWorkspace(loaded);
+
+        var updated = _workspaceService.FindWorkspace(1);
+        Assert.NotNull(updated);
+        Assert.Equal("archived", updated.status);
     }
 }
