@@ -5,7 +5,7 @@ var handler = new CommandHandler();
 if (args.Length == 0)
 {
     Console.WriteLine("Использование: tm <команда> [аргументы]");
-    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, find");
+    Console.WriteLine("Команды: init, add, list, remove, archive, compact, plist, premove, find");
     return;
 }
 
@@ -81,6 +81,24 @@ try
 
         case "plist":
             handler.HandlePlist();
+            break;
+
+        case "premove":
+            {
+                if (remainingArgs.Length == 0)
+                {
+                    Console.WriteLine("Укажите ID рабочего пространства для удаления.");
+                    return;
+                }
+
+                if (!int.TryParse(remainingArgs[0], out var workspaceId))
+                {
+                    Console.WriteLine("ID рабочего пространства должен быть числом.");
+                    return;
+                }
+
+                handler.HandlePremove(workspaceId);
+            }
             break;
 
         case "find":

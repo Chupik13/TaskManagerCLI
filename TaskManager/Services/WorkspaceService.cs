@@ -55,4 +55,25 @@ public class WorkspaceService
         workspaces.Add(workspace);
         SaveWorkspaces(workspaces);
     }
+
+    public void RemoveWorkspace(int id)
+    {
+        var workspaces = LoadWorkspaces();
+        var workspace = workspaces.FirstOrDefault(w => w.id == id);
+        
+        if (workspace == null)
+        {
+            throw new InvalidOperationException("Рабочее пространство не найдено.");
+        }
+
+        workspaces.Remove(workspace);
+        
+        // Reassign IDs to maintain order starting from 1
+        for (int i = 0; i < workspaces.Count; i++)
+        {
+            workspaces[i].id = i + 1;
+        }
+        
+        SaveWorkspaces(workspaces);
+    }
 }

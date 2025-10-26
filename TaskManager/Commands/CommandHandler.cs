@@ -173,6 +173,19 @@ public class CommandHandler
         }
     }
 
+    public void HandlePremove(int workspaceId)
+    {
+        try
+        {
+            _workspaceService.RemoveWorkspace(workspaceId);
+            Console.WriteLine($"Рабочее пространство {workspaceId} удалено. ID переприсвоены.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
     public void HandleFind(string searchText, int? workspaceId, bool isGlobal)
     {
         if (string.IsNullOrWhiteSpace(searchText))
